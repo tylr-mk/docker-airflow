@@ -1,0 +1,84 @@
+This patch is from PR 2572, but altered to apply to 1.8.2
+
+- config_templates/ don't exist yet in this release, they are still in airflow/configuration.py
+- docs removed, they aren't installed
+
+diff --git a/airflow/config_templates/default_airflow.cfg b/airflow/configuration.py
+index 948c72c41..5c5b1105d 100644
+--- a/airflow/config_templates/default_airflow.cfg
++++ b/airflow/configuration.py
+@@ -279,6 +279,9 @@ worker_log_server_port = 8793
+ # information.
+ broker_url = sqla+mysql://airflow:airflow@localhost:3306/airflow
+ 
++# Options specific to the broker in use. Value must be parseable as JSON.
++broker_transport_options = {{}}
++
+ # Another key Celery setting
+ celery_result_backend = db+mysql://airflow:airflow@localhost:3306/airflow
+ 
+diff --git a/airflow/executors/celery_executor.py b/airflow/executors/celery_executor.py
+index 17c343bd4..f0d6bf87d 100644
+--- a/airflow/executors/celery_executor.py
++++ b/airflow/executors/celery_executor.py
+@@ -13,6 +13,7 @@
+ # limitations under the License.
+ 
+ from builtins import object
++import json
+ import logging
+ import subprocess
+ import ssl
+@@ -44,6 +45,7 @@ class CeleryConfig(object):
+     CELERYD_PREFETCH_MULTIPLIER = 1
+     CELERY_ACKS_LATE = True
+     BROKER_URL = configuration.get('celery', 'BROKER_URL')
++    BROKER_TRANSPORT_OPTIONS = json.loads(configuration.get('celery', 'BROKER_TRANSPORT_OPTIONS'))
+     CELERY_RESULT_BACKEND = configuration.get('celery', 'CELERY_RESULT_BACKEND')
+     CELERYD_CONCURRENCY = configuration.getint('celery', 'CELERYD_CONCURRENCY')
+     CELERY_DEFAULT_QUEUE = DEFAULT_QUEUE
+diff --git a/tests/executors/celery_executor.py b/tests/executors/celery_executor.py
+new file mode 100644
+index 000000000..bf0e11c26
+--- /dev/null
++++ b/tests/executors/celery_executor.py
+@@ -0,0 +1,39 @@
++# -*- coding: utf-8 -*-
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++# http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++import sys
++import unittest
++
++from airflow import configuration
++
++
++class CeleryConfTest(unittest.TestCase):
++
++    def setUp(self):
++        configuration.load_test_config()
++
++    def tearDown(self):
++        # We need to un-import the module as it reads the config at import time. :(
++        del sys.modules['airflow.executors.celery_executor']
++
++    def test_broker_transport_options_default(self):
++        from airflow.executors.celery_executor import CeleryConfig
++
++        self.assertEqual(CeleryConfig.BROKER_TRANSPORT_OPTIONS, {})
++
++    def test_broker_transport_options_set(self):
++        configuration.set('celery', 'BROKER_TRANSPORT_OPTIONS', '{"visibility_timeout": 10000}')
++        from airflow.executors.celery_executor import CeleryConfig
++
++        self.assertEqual(CeleryConfig.BROKER_TRANSPORT_OPTIONS, {'visibility_timeout': 10000})

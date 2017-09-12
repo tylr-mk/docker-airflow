@@ -67,6 +67,10 @@ RUN set -ex \
         /usr/share/doc \
         /usr/share/doc-base
 
+COPY patches/ /tmp/
+RUN find /tmp -name '*.diff' -print0 | \
+      xargs -I% -0 patch -p1 -i % -d /usr/local/lib/python3.6/site-packages/
+
 COPY script/entrypoint.sh /entrypoint.sh
 COPY config/airflow.cfg ${AIRFLOW_HOME}/airflow.cfg
 
