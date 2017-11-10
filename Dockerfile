@@ -1,4 +1,4 @@
-# VERSION 1.8.1-1
+# VERSION 1.9.0rc1
 # AUTHOR: Matthieu "Puckel_" Roisil
 # DESCRIPTION: Basic Airflow container
 # BUILD: docker build --rm -t puckel/docker-airflow .
@@ -12,7 +12,7 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV TERM linux
 
 # Airflow
-ARG AIRFLOW_VERSION=1.8.2
+ARG AIRFLOW_VERSION='1.9.0rc1+incubating-bin --find-links https://dist.apache.org/repos/dist/dev/incubator/airflow/1.9.0rc1/'
 ARG AIRFLOW_HOME=/usr/local/airflow
 
 # Define en_US.
